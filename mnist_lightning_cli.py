@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from mnist_model import LightningMNISTClassifier
-from pytorch_lightning.utilities.cli import LightningCLI
+from lightning.pytorch.cli import LightningCLI
 
 
 def lightning_cli():

@@ -3,3 +3,11 @@ model:
   layer_2_size: 128
   lr: 0.005
   batch_size: 16
+# trainer:
+#   logger:
+#     class_path: lightning.pytorch.loggers.WandbLogger
+#     init_args:
+#       project: nmist_test
+#       save_dir: out/nmist_test/lightning_logs
+#     dict_kwargs:
+#       job_type: sweep

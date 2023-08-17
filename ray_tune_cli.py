@@ -1,5 +1,7 @@
+from dataclasses import dataclass
 import re
 from ast import literal_eval
+from typing import List
 from unittest.mock import patch
 from jsonargparse import ActionConfigFile, ArgumentParser, capture_parser, REMAINDER
 
@@ -7,8 +9,17 @@ from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.integration.pytorch_lightning import TuneCallback
 
+class DomainSampler(tune.search.sample.Domain):
+
+    def __new__(self, function, **kwargs) -> tune.search.sample.Domain:
+        return getattr(tune, function) (**kwargs)
+
 
 re_tune_func = re.compile(r'^tune.(\w+)\((.+)\)$')
+
+# @dataclass
+# class TuneCallbackList:
+#     callbacks: List[TuneCallback]
 
 
 def eval_tune_run_config(config):
@@ -30,6 +41,7 @@ def ray_tune_cli(lightning_cli):
     parser.add_argument('--config', action=ActionConfigFile)
     parser.add_class_arguments(CLIReporter, 'reporter')#, skip={'parameter_columns'})
     parser.add_subclass_arguments(TuneCallback, 'tune_callback', instantiate=False)
+    # parser.add_dataclass_arguments(TuneCallbackList, 'tune_callbacks', instantiate=False)
     parser.add_function_arguments(tune.run, 'run', skip={'run_or_experiment', 'progress_reporter'})#, 'config'
     parser.add_argument(
         'fit_args',
@@ -50,6 +62,7 @@ def ray_tune_cli(lightning_cli):
         fit_cfg = fit_parser.get_defaults()
 
     callbacks = [cfg.tune_callback]
+    # callbacks = cfg.tune_callbacks.callbacks
     callbacks += fit_cfg.get('trainer.callbacks') or []
 
     fit_cfg['trainer.callbacks'] = callbacks
@@ -63,7 +76,9 @@ def ray_tune_cli(lightning_cli):
             lightning_cli()
 
     cfg_init = parser.instantiate_classes(cfg)
+    # eval_tune_run_config(cfg_init.run.config)
     eval_tune_run_config(cfg_init.run.config)
+    # eval_tune_run_config(cfg_init.run.scheduler._hyperparam_mutations)
     analysis = tune.run(
         fit_function,
         progress_reporter=cfg_init.reporter,

@@ -1,6 +1,6 @@
 import os
 import torch
-from pytorch_lightning import LightningModule
+from lightning import LightningModule
 from filelock import FileLock
 from torch.utils.data import DataLoader, random_split
 from torch.nn import functional as F
@@ -28,6 +28,7 @@ class LightningMNISTClassifier(LightningModule):
         self.layer_1 = torch.nn.Linear(28 * 28, self.layer_1_size)
         self.layer_2 = torch.nn.Linear(self.layer_1_size, self.layer_2_size)
         self.layer_3 = torch.nn.Linear(self.layer_2_size, 10)
+        self.validation_step_outputs = []
 
     def forward(self, x):
         batch_size, channels, width, height = x.size()
@@ -68,13 +69,17 @@ class LightningMNISTClassifier(LightningModule):
         logits = self.forward(x)
         loss = self.cross_entropy_loss(logits, y)
         accuracy = self.accuracy(logits, y)
-        return {"val_loss": loss, "val_accuracy": accuracy}
-
-    def validation_epoch_end(self, outputs):
+        pred = {"val_loss": loss, "val_accuracy": accuracy}
+        self.validation_step_outputs.append(pred)
+        return pred
+        
+    def on_validation_epoch_end(self):
+        outputs = self.validation_step_outputs
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         avg_acc = torch.stack([x["val_accuracy"] for x in outputs]).mean()
         self.log("ptl/val_loss", avg_loss)
         self.log("ptl/val_accuracy", avg_acc)
+        self.validation_step_outputs.clear()
 
     @staticmethod
     def download_data(data_dir):
